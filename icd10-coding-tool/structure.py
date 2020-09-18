@@ -112,3 +112,9 @@ def extracting_code(diagnose):
     l2 = layer_02(l1, diagnose)
     l3 = layer_03(l2, diagnose)
     return l3
+
+if __name__ == "__main__":
+    input_str = input("輸入病摘：")
+    print()
+    for k,v in extracting_code(input_str).items():
+        print(k, v)
