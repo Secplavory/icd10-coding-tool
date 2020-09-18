@@ -116,5 +116,5 @@ def extracting_code(diagnose):
 if __name__ == "__main__":
     input_str = input("輸入病摘：")
     print()
-    for k,v in extracting_code(input_str).items():
+    for k,v in sorted(extracting_code(input_str).items(), key=lambda x:x[1]['p'], reverse=True):
         print(k, v)
