@@ -44,11 +44,11 @@ def layer_00(diagnose):
 
 def layer_01(layer00):
     l1 = {}
-    synonym_list = []
+    synonym_list = set()
     for code_k, code_v in codenet.items():
         for sense, synonyms in code_v['sense'].items():
             for synonym in synonyms:
-                synonym_list.append(synonym)
+                synonym_list.add(synonym)
     max_f = 0
     for l0_k, l0_v in layer00.items():
         if l0_k in synonym_list:
