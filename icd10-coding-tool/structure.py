@@ -1,5 +1,6 @@
 import json
 from nltk.corpus import wordnet as wn
+from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 lemmatizer = WordNetLemmatizer()
 with open("./data/icd10/icd10_codenet.json", 'r') as f:
@@ -20,7 +21,12 @@ def layer_00(diagnose):
     diagnose = diagnose.split(" ", -1)
     l0 = {}
     max_f = 0
+    filted_diagnose = []
     for word in diagnose:
+        if word not in set(stopwords.words('english')):
+            filted_diagnose.append(word)
+
+    for word in filted_diagnose:
         #建構layer 0
         if word not in l0:
             l0[word] = {}
@@ -47,7 +53,7 @@ def layer_01(layer00):
     for l0_k, l0_v in layer00.items():
         if l0_k in synonym_list:
             l1[l0_k] = {}
-            l1[l0_k]['f'] = synonym_list.count(l0_k)
+            l1[l0_k]['f'] = l0_v['f']
             if max_f < l1[l0_k]['f']:
                 max_f = l1[l0_k]['f']
     for k, v in l1.items():
@@ -107,6 +113,7 @@ def layer_03(layer02, diagnose):
 
 #輸入純文字，輸出dict。
 def extracting_code(diagnose):
+    diagnose = diagnose.lower()
     l0 = layer_00(diagnose)
     l1 = layer_01(l0)
     l2 = layer_02(l1, diagnose)
