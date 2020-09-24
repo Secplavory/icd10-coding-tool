@@ -5,20 +5,11 @@ tokenizer = nltk.RegexpTokenizer(r"\w+")
 lemmatizer = nltk.stem.WordNetLemmatizer()
 stopwords = nltk.corpus.stopwords.words("english")
 
-with open("../data/icd10/icd10_codenet.json", 'r') as f:
-    codenet_dict = json.loads(f.read())
-synonyms = set()
-for codeInfo in codenet_dict.values():
-    for word in codeInfo['title'].split(" ", -1):
-        synonyms.add(word)
-    for word in codeInfo['synonyms']:
-        synonyms.add(word)
-
 def findRank(input_str):
     words = [lemmatizer.lemmatize(word) for word in tokenizer.tokenize(input_str.lower()) if word not in stopwords]
     word_dict = {}
     for word in words:
-        if word in synonyms and word not in word_dict:
+        if word not in word_dict:
             word_dict[word] = {}
             word_dict[word]['f'] = words.count(word)
 
@@ -31,37 +22,63 @@ def findRank(input_str):
 
     return word_dict
 
-def findCode(synonym_dict):
+def findCode(codenet_dict, input_str):
+    word_rank = findRank(input_str)
     code_dict = {}
-    for word, word_v in synonym_dict.items():
-        for code, code_v in codenet_dict.items():
-            if word in code_v['title'].split(" ", -1) or word in code_v['synonyms']:
-                if code not in code_dict:
-                    code_dict[code] = {}
-                    code_dict[code]['f'] = 0
-                    code_dict[code]['max_p'] = 0
-                if code_dict[code]['max_p'] < word_v['p']:
-                    code_dict[code]['max_p'] = word_v['p']
-                code_dict[code]['f'] += 1
-    
+    removed_word = {}
+    for code, code_info in codenet_dict.items():
+        hasWord = code_info['title'].split(" ", -1)
+        hasWord.extend(code_info['synonyms'])
+        for word in set(hasWord):
+            if code not in code_dict:
+                code_dict[code] = {}
+                code_dict[code]['f'] = 0
+                code_dict[code]['max_p'] = 0
+            if word in word_rank:
+                if code_dict[code]['max_p'] < word_rank[word]['p']:
+                    code_dict[code]['max_p'] = word_rank[word]['p']
+                code_dict[code]['f'] +=1
+                if code not in removed_word:
+                    removed_word[code] = set()
+                removed_word[code].add(word)
+                
+            
     max_f = 0
     for code_v in code_dict.values():
         if max_f < code_v['f']:
             max_f = code_v['f']
-    for code_v in code_dict.values():
-        code_v['w'] = code_v['f'] / max_f
-        code_v['p'] = code_v['max_p'] * code_v['w']
+    for code, code_info in codenet_dict.items():
+        next_total_p = 0
+        if 'child' in codenet_dict[code]:
+            if code in removed_word:
+                tmp_removed = removed_word[code]
+            else:
+                tmp_removed = set()
+            nextCode_dict = findCode(codenet_dict[code]['child'], " ".join(set(word_rank).difference(tmp_removed)))
+            code_dict[code]['child'] = nextCode_dict
+            for next_code_info in nextCode_dict.values():
+                if next_code_info['p'] > 0:
+                    next_total_p += next_code_info['p']
+            
+        if max_f != 0:
+            code_dict[code]['w'] = code_dict[code]['f'] / max_f
+            code_dict[code]['p'] = code_dict[code]['max_p'] * code_dict[code]['w']
+            code_dict[code]['p'] = code_dict[code]['p'] + next_total_p
+        else:
+            code_dict[code]['w'] = 0
+            code_dict[code]['p'] = 0 + next_total_p
 
     return code_dict
 
-    
-
 
 if __name__ == "__main__":
+    with open("../data/icd10/icd10_codenet.json", 'r') as f:
+        codenet_dict = json.loads(f.read())
     input_str = input("輸入病摘：")
     print()
-    synonym_dict = findRank(input_str)
-    candidate = findCode(synonym_dict)
+    candidate = findCode(codenet_dict, input_str)
+    
     
     for k,v in sorted(candidate.items(), key=lambda x:x[1]['p'], reverse=True):
-        print(k, v)
+        if v['p'] > 0 :
+            print(k, v['p'])
