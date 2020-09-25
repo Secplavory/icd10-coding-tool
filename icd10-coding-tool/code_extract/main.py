@@ -1,7 +1,5 @@
 import json
-from typing import Counter
 import nltk
-from nltk.tokenize.api import TokenizerI
 tokenizer = nltk.RegexpTokenizer(r"\w+")
 lemmatizer = nltk.stem.WordNetLemmatizer()
 stopwords = nltk.corpus.stopwords.words("english")
@@ -36,42 +34,25 @@ def findCode(codenet_dict, input_str):
             code_dict[code]['max_p'] = 0
         if code not in removed_word:
             removed_word[code] = set()
-        # if code == "A01":
-        #     print(titles)
-        #     print(synonyms)
-        #     print(word_rank)
+
         for word in titles:
             if word in word_rank:
                 if code_dict[code]['max_p'] < word_rank[word]['p']:
                     code_dict[code]['max_p'] = word_rank[word]['p']
                 code_dict[code]['f'] += 1
-                removed_word[code].add(word)
+                # removed_word[code].add(word)
 
         for word in synonyms:
             if word in word_rank:
                 if code_dict[code]['max_p'] < word_rank[word]['p']:
                     code_dict[code]['max_p'] = word_rank[word]['p']
                 code_dict[code]['f'] += 0.5
-                removed_word[code].add(word)
+                # removed_word[code].add(word)
 
     for code, code_info in codenet_dict.items():
         if 'child' in codenet_dict[code]:
             nextCode_dict = findCode(codenet_dict[code]['child'], " ".join([word for word in input_str.split(" ", -1) if word not in removed_word[code]]))
             code_dict[code]['child'] = nextCode_dict
-        #     for next_code_info in nextCode_dict.values():
-        #         if next_code_info['p'] > 0:
-        #             next_total_p += next_code_info['p']
-        #             next_count += 1
-        # if next_count > 0:
-        #     next_total_p = (next_total_p / next_count) * 0.8
-        # if max_f != 0:
-        #     code_dict[code]['w'] = code_dict[code]['f'] / max_f
-        #     code_dict[code]['p'] = code_dict[code]['max_p'] * code_dict[code]['w']
-        #     code_dict[code]['p'] = code_dict[code]['p'] + next_total_p
-
-        # else:
-        #     code_dict[code]['w'] = 0
-        #     code_dict[code]['p'] = 0 + next_total_p
 
     return code_dict
 
@@ -112,17 +93,18 @@ def calculate_P(candidate):
 def getMax_p(candidate):
     max_p = 0
     for code_info in candidate.values():
-        if max_p < code_info['p']:
-            max_p = code_info['p']
         if "child" in code_info:
             p = getMax_p(code_info['child'])
-            if max_p < p:
-                max_p = p
+            if code_info['p'] < p:
+                code_info['p'] = p
+        if max_p < code_info['p']:
+            max_p = code_info['p']
+            
     return max_p
 
 def printCandidate(candidate, count=0):
     for k,v in sorted(candidate.items(), key=lambda x:x[1]['p'], reverse=True):
-        if v['p'] > 0 :
+        if v['p'] > 0.5 :
             for i in range(0, count):
                 print("\t", end="")
             print(k, "：", v['p'])
@@ -138,10 +120,6 @@ if __name__ == "__main__":
     max_f = calculate_max_f(candidate)
     candidate = calculate_w(candidate, max_f)
     calculate_P(candidate)
-    for code_info in candidate.values():
-        if 'child' in code_info:
-            max_p = getMax_p(code_info['child'])
-            if code_info['p'] < max_p:
-                code_info['p'] = max_p
+    getMax_p(candidate)
     print(max_f)
     printCandidate(candidate)
