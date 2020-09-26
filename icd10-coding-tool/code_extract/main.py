@@ -40,30 +40,34 @@ def findCode(codenet_dict, input_str):
                 if code_dict[code]['max_p'] < word_rank[word]['p']:
                     code_dict[code]['max_p'] = word_rank[word]['p']
                 code_dict[code]['f'] += 1
-                # removed_word[code].add(word)
+                removed_word[code].add(word)
 
         for word in synonyms:
             if word in word_rank:
                 if code_dict[code]['max_p'] < word_rank[word]['p']:
                     code_dict[code]['max_p'] = word_rank[word]['p']
-                code_dict[code]['f'] += 0.5
-                # removed_word[code].add(word)
+                code_dict[code]['f'] += 1
+                removed_word[code].add(word)
 
     for code, code_info in codenet_dict.items():
         if 'child' in codenet_dict[code]:
-            nextCode_dict = findCode(codenet_dict[code]['child'], " ".join([word for word in input_str.split(" ", -1) if word not in removed_word[code]]))
+            nextCode_dict = findCode(codenet_dict[code]['child'], " ".join([word for word in word_rank.keys() if word not in removed_word[code]]))
             code_dict[code]['child'] = nextCode_dict
-
+            code_dict[code]['all_f'] = code_dict[code]['f'] + calculate_all_f(nextCode_dict)
+        else:
+            code_dict[code]['all_f'] = code_dict[code]['f']
     return code_dict
 
-def calculate_max_f(candidate, count=0):
+
+def calculate_all_f(candidate):
+    count = 0
     for code_info in candidate.values():
-        if count < code_info['f']:
-            count = code_info['f']
-        if "child" in code_info:
-            count = calculate_max_f(code_info['child'], count)
+        if count < code_info['all_f']:
+            count = code_info['all_f']
+
     return count
 
+"""
 def calculate_w(candidate, max_f):
     for code_info in candidate.values():
         if max_f > 0:
@@ -73,6 +77,7 @@ def calculate_w(candidate, max_f):
         if "child" in code_info:
             calculate_w(code_info['child'], max_f)
     return candidate
+
 
 def calculate_P(candidate):
     total_p = 0
@@ -101,13 +106,13 @@ def getMax_p(candidate):
             max_p = code_info['p']
             
     return max_p
-
+"""
 def printCandidate(candidate, count=0):
-    for k,v in sorted(candidate.items(), key=lambda x:x[1]['p'], reverse=True):
-        if v['p'] > 0.5 :
+    for k,v in sorted(candidate.items(), key=lambda x:x[1]['all_f'], reverse=True):
+        if v['all_f'] > 0 :
             for i in range(0, count):
                 print("\t", end="")
-            print(k, "：", v['p'])
+            print(k, "：", v['all_f'])
             if "child" in v:
                 printCandidate(v['child'], count+1)
 
@@ -117,9 +122,9 @@ if __name__ == "__main__":
     input_str = input("輸入病摘：")
     print()
     candidate = findCode(codenet_dict, input_str)
-    max_f = calculate_max_f(candidate)
-    candidate = calculate_w(candidate, max_f)
-    calculate_P(candidate)
-    getMax_p(candidate)
-    print(max_f)
+    # max_f = calculate_max_f(candidate)
+    # candidate = calculate_w(candidate, max_f)
+    # calculate_P(candidate)
+    # getMax_p(candidate)
+    # print(max_f)
     printCandidate(candidate)
