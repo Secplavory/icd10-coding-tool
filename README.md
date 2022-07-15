@@ -1,2 +1,2 @@
 # icd10-coding-tool
-coding tool for icd10
+Coding tool for icd10. This is part of my graduation project (for research).
